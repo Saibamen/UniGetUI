@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
@@ -59,8 +60,15 @@ public abstract partial class AbstractPackagesPage : UserControl,
         {
             if (args.PropertyName is nameof(PackagesPageViewModel.SortFieldIndex)
                                   or nameof(PackagesPageViewModel.SortAscending))
+            {
                 UpdateSortMenuChecks();
+                SyncOrderByButtonName();
+            }
+            if (args.PropertyName is nameof(PackagesPageViewModel.IsFilterPaneOpen))
+                SyncFiltersButtonName();
         };
+        SyncFiltersButtonName();
+        SyncOrderByButtonName();
 
         // Build the toolbar now that both AXAML controls and the ViewModel are ready
         GenerateToolBar(ViewModel);
@@ -90,7 +98,11 @@ public abstract partial class AbstractPackagesPage : UserControl,
     public void FocusPackageList()
     {
         if (ViewModel.MegaQueryBoxEnabled)
-            Dispatcher.UIThread.Post(() => MegaQueryBlock.Focus(), DispatcherPriority.Background);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!ViewModel.MegaQueryVisible) return;
+                MegaQueryBlock.Focus();
+            }, DispatcherPriority.ApplicationIdle);
         else
             ViewModel.RequestFocusList();
     }
@@ -125,6 +137,7 @@ public abstract partial class AbstractPackagesPage : UserControl,
     {
         MainToolbarButtonIcon.Path = $"avares://UniGetUI.Avalonia/Assets/Symbols/{svgName}.svg";
         MainToolbarButtonText.Text = label;
+        AutomationProperties.SetName(MainToolbarButton, label);
         MainToolbarButton.Click += (_, _) => onClick();
     }
 
@@ -166,6 +179,24 @@ public abstract partial class AbstractPackagesPage : UserControl,
     private static TextBlock? Check(bool show) =>
         show ? new TextBlock { Text = "✓", FontSize = 12 } : null;
 
+    private void SyncFiltersButtonName()
+    {
+        bool open = ViewModel.IsFilterPaneOpen;
+        string state = open ? CoreTools.Translate("Open") : CoreTools.Translate("Closed");
+        string label = CoreTools.Translate("Filters");
+        AutomationProperties.SetName(ToggleFiltersButton, $"{label}, {state}");
+    }
+
+    private void SyncOrderByButtonName()
+    {
+        string direction = ViewModel.SortAscending
+            ? CoreTools.Translate("Ascending")
+            : CoreTools.Translate("Descending");
+        AutomationProperties.SetName(
+            OrderByButton,
+            CoreTools.Translate("{0}: {1}, {2}", CoreTools.Translate("Order by"), ViewModel.SortFieldName, direction));
+    }
+
     private void UpdateSortMenuChecks()
     {
         OrderByName_Menu.Icon = Check(ViewModel.SortFieldIndex == 0);
@@ -185,6 +216,7 @@ public abstract partial class AbstractPackagesPage : UserControl,
 
     public void ReloadTriggered() => ViewModel.TriggerReload();
     public void SelectAllTriggered() => ViewModel.ToggleSelectAll();
+    public void DetailsTriggered() { if (SelectedItem is { } pkg) _ = ShowDetailsForPackage(pkg); }
 
     // ─── IEnterLeaveListener ──────────────────────────────────────────────────
     public virtual void OnEnter() { }

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using UniGetUI.Avalonia.ViewModels;
 
 namespace UniGetUI.Avalonia.Views;
@@ -43,5 +44,13 @@ public partial class SidebarView : BaseView<SidebarViewModel>
         if (NavListBox.SelectedItem is ListBoxItem item && item.Tag is string tag
             && Enum.TryParse<PageType>(tag, out var pageType))
             ViewModel?.RequestNavigation(pageType.ToString());
+    }
+
+    public void FocusSelectedItem()
+    {
+        if (NavListBox.SelectedItem is InputElement item)
+            item.Focus();
+        else
+            NavListBox.Focus();
     }
 }

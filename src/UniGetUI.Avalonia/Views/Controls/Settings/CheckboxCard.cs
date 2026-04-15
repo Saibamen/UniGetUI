@@ -1,9 +1,12 @@
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using UniGetUI.Avalonia.Infrastructure;
 using UniGetUI.Core.Tools;
 using CoreSettings = global::UniGetUI.Core.SettingsEngine.Settings;
 
@@ -36,6 +39,7 @@ public partial class CheckboxCard : SettingsCard
             _checkbox.IsChecked = CoreSettings.Get(setting_name) ^ IS_INVERTED ^ ForceInversion;
             _textblock.Opacity = (_checkbox.IsChecked ?? false) ? 1 : 0.7;
             _checkbox.IsCheckedChanged += _checkbox_Toggled;
+            SyncToggleItemStatus();
         }
     }
 
@@ -47,7 +51,11 @@ public partial class CheckboxCard : SettingsCard
 
     public string Text
     {
-        set => _textblock.Text = value;
+        set
+        {
+            _textblock.Text = value;
+            ApplyAutomationMetadata(_checkbox, value, _warningBlock.IsVisible ? _warningBlock.Text : null);
+        }
     }
 
     public string WarningText
@@ -56,6 +64,7 @@ public partial class CheckboxCard : SettingsCard
         {
             _warningBlock.Text = value;
             _warningBlock.IsVisible = value.Any();
+            ApplyAutomationMetadata(_checkbox, _textblock.Text, _warningBlock.IsVisible ? value : null);
         }
     }
 
@@ -72,6 +81,8 @@ public partial class CheckboxCard : SettingsCard
             OnContent = new TextBlock { Text = CoreTools.Translate("Enabled") },
             OffContent = new TextBlock { Text = CoreTools.Translate("Disabled") },
         };
+        // Force CheckBox role so macOS VoiceOver exposes checked/unchecked state
+        AutomationProperties.SetControlTypeOverride(_checkbox, AutomationControlType.CheckBox);
         _textblock = new TextBlock
         {
             VerticalAlignment = VerticalAlignment.Center,
@@ -87,6 +98,7 @@ public partial class CheckboxCard : SettingsCard
         };
         _warningBlock.Classes.Add("setting-warning-text");
         IS_INVERTED = false;
+        AutomationProperties.SetAccessibilityView(_warningBlock, AccessibilityView.Raw);
 
         Content = _checkbox;
         Header = new StackPanel
@@ -97,6 +109,7 @@ public partial class CheckboxCard : SettingsCard
         };
 
         _checkbox.IsCheckedChanged += _checkbox_Toggled;
+        ApplyAutomationMetadata(_checkbox, _textblock.Text);
     }
 
     protected virtual void _checkbox_Toggled(object? sender, RoutedEventArgs e)
@@ -104,9 +117,25 @@ public partial class CheckboxCard : SettingsCard
         CoreSettings.Set(setting_name, (_checkbox.IsChecked ?? false) ^ IS_INVERTED ^ ForceInversion);
         StateChanged?.Invoke(this, EventArgs.Empty);
         _textblock.Opacity = (_checkbox.IsChecked ?? false) ? 1 : 0.7;
+        SyncToggleItemStatus();
+        AccessibilityAnnouncementService.AnnounceToggle(_textblock.Text, _checkbox.IsChecked ?? false);
         var cmd = StateChangedCommand;
         if (cmd?.CanExecute(null) == true)
             cmd.Execute(null);
+    }
+
+    protected void SyncToggleItemStatus()
+    {
+        string state = (_checkbox.IsChecked ?? false)
+            ? CoreTools.Translate("Enabled")
+            : CoreTools.Translate("Disabled");
+        // ItemStatus: some screen readers read this separately
+        AutomationProperties.SetItemStatus(_checkbox, state);
+        // Name with state suffix: guarantees VoiceOver announces state on macOS
+        // where ToggleSwitch AX role may not expose IsChecked natively
+        string baseName = _textblock.Text;
+        if (!string.IsNullOrEmpty(baseName))
+            AutomationProperties.SetName(_checkbox, $"{baseName}, {state}");
     }
 }
 
@@ -132,6 +161,7 @@ public partial class CheckboxCard_Dict : CheckboxCard
                     ^ ForceInversion;
                 _textblock.Opacity = (_checkbox.IsChecked ?? false) ? 1 : 0.7;
                 _disableStateChangedEvent = false;
+                SyncToggleItemStatus();
             }
         }
     }
@@ -149,6 +179,7 @@ public partial class CheckboxCard_Dict : CheckboxCard
                     ^ IS_INVERTED
                     ^ ForceInversion;
                 _textblock.Opacity = (_checkbox.IsChecked ?? false) ? 1 : 0.7;
+                SyncToggleItemStatus();
             }
         }
     }
@@ -165,5 +196,7 @@ public partial class CheckboxCard_Dict : CheckboxCard
         );
         StateChanged?.Invoke(this, EventArgs.Empty);
         _textblock.Opacity = (_checkbox.IsChecked ?? false) ? 1 : 0.7;
+        SyncToggleItemStatus();
+        AccessibilityAnnouncementService.AnnounceToggle(_textblock.Text, _checkbox.IsChecked ?? false);
     }
 }

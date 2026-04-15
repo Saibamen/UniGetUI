@@ -1,5 +1,7 @@
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -99,6 +101,7 @@ public class SettingsCard : UserControl
         set
         {
             _isClickEnabled = value;
+            Focusable = value;
             Cursor = value ? new Cursor(StandardCursorType.Hand) : Cursor.Default;
             _chevron.IsVisible = value;
             if (value)
@@ -132,6 +135,7 @@ public class SettingsCard : UserControl
             Width = 24,
             Height = 24,
         };
+        AutomationProperties.SetAccessibilityView(_iconPresenter, AccessibilityView.Raw);
 
         _headerPresenter = new ContentControl
         {
@@ -183,6 +187,7 @@ public class SettingsCard : UserControl
             Margin = new Thickness(8, 0, 0, 0),
             IsVisible = false,
         };
+        AutomationProperties.SetAccessibilityView(_chevron, AccessibilityView.Raw);
 
         var grid = new Grid
         {
@@ -208,6 +213,10 @@ public class SettingsCard : UserControl
         base.Content = _border;
 
         PointerPressed += OnPointerPressed;
+        KeyDown += OnKeyDown;
+        GotFocus += (_, _) => { if (_isClickEnabled) _border.Classes.Add("settings-card-focused"); };
+        LostFocus += (_, _) => _border.Classes.Remove("settings-card-focused");
+        SyncAutomationProperties();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -224,6 +233,7 @@ public class SettingsCard : UserControl
                     VerticalAlignment = VerticalAlignment.Center,
                 }
                 : value;
+            SyncAutomationProperties();
         }
         else if (change.Property == DescriptionProperty)
         {
@@ -231,6 +241,7 @@ public class SettingsCard : UserControl
             if (value is null)
             {
                 _descriptionRow.IsVisible = false;
+                SyncAutomationProperties();
                 return;
             }
             _descriptionPresenter.Content = value is string s
@@ -244,7 +255,50 @@ public class SettingsCard : UserControl
                 }
                 : value;
             _descriptionRow.IsVisible = true;
+            SyncAutomationProperties();
         }
+    }
+
+    protected string? GetAutomationNameText() => ExtractAutomationText(Header);
+
+    protected string? GetAutomationHelpText() => ExtractAutomationText(Description);
+
+    protected void ApplyAutomationMetadata(Control control, string? name = null, string? helpText = null)
+    {
+        name ??= GetAutomationNameText();
+        helpText ??= GetAutomationHelpText();
+
+        if (!string.IsNullOrWhiteSpace(name))
+            AutomationProperties.SetName(control, name);
+
+        if (!string.IsNullOrWhiteSpace(helpText))
+            AutomationProperties.SetHelpText(control, helpText);
+    }
+
+    private static string? ExtractAutomationText(object? value) => value switch
+    {
+        string s when !string.IsNullOrWhiteSpace(s) => s,
+        TextBlock tb when !string.IsNullOrWhiteSpace(tb.Text) => tb.Text,
+        SelectableTextBlock stb when !string.IsNullOrWhiteSpace(stb.Text) => stb.Text,
+        ContentControl cc when cc.Content is not null => ExtractAutomationText(cc.Content),
+        _ => null,
+    };
+
+    private void SyncAutomationProperties()
+    {
+        string? name = GetAutomationNameText();
+        string? help = GetAutomationHelpText();
+        ApplyAutomationMetadata(this, name, help);
+        // Also propagate to _border: on macOS, Avalonia may surface the Border element
+        // rather than the UserControl wrapper, so set the name on both.
+        if (!string.IsNullOrWhiteSpace(name))
+            AutomationProperties.SetName(_border, name);
+        if (!string.IsNullOrWhiteSpace(help))
+            AutomationProperties.SetHelpText(_border, help);
+        var type = IsClickEnabled ? (AutomationControlType?)AutomationControlType.Button : null;
+        AutomationProperties.SetControlTypeOverride(this, type);
+        if (type.HasValue)
+            AutomationProperties.SetControlTypeOverride(_border, type);
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -252,7 +306,22 @@ public class SettingsCard : UserControl
         if (!_isClickEnabled) return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
 
+        InvokeClick();
         e.Handled = true;
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (!_isClickEnabled) return;
+        if (e.Source != this) return;   // only when the card itself has focus, not a child
+        if (e.Key is not (Key.Enter or Key.Space)) return;
+
+        InvokeClick();
+        e.Handled = true;
+    }
+
+    private void InvokeClick()
+    {
         Click?.Invoke(this, new RoutedEventArgs());
         var cmd = Command;
         var param = CommandParameter;

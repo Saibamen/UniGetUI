@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:automation="clr-namespace:Avalonia.Automation;assembly=Avalonia.Controls"
         xmlns:vm="using:UniGetUI.Avalonia.ViewModels"
         xmlns:controls="using:UniGetUI.Avalonia.Views.Controls"
         x:Class="UniGetUI.Avalonia.Views.PackageDetailsWindow"
@@ -24,6 +25,7 @@
         <ProgressBar Grid.Row="0"
                      IsIndeterminate="True"
                      IsVisible="{Binding IsLoading}"
+                     automation:AutomationProperties.Name="{Binding PackageName}"
                      Height="3"/>
 
         <!-- ── Scrollable body ── -->
@@ -40,6 +42,7 @@
                             Background="{DynamicResource AppDialogPanelBackground}"
                             ClipToBounds="True">
                         <Image Source="{Binding PackageIcon}"
+                               automation:AutomationProperties.AccessibilityView="Raw"
                                Stretch="Uniform"
                                RenderOptions.BitmapInterpolationMode="HighQuality"/>
                     </Border>
@@ -49,7 +52,8 @@
                                 Spacing="4">
                         <TextBlock Text="{Binding PackageName}"
                                    FontSize="22" FontWeight="Bold"
-                                   TextWrapping="Wrap"/>
+                                   TextWrapping="Wrap"
+                                   automation:AutomationProperties.HeadingLevel="1"/>
                         <TextBlock Text="{Binding SourceDisplay}"
                                    FontSize="13" Opacity="0.65"/>
                     </StackPanel>
@@ -110,6 +114,7 @@
                                     IsVisible="{Binding HasHomepageUrl}"
                                     Command="{Binding OpenUrlCommand}"
                                     CommandParameter="{Binding HomepageText}"
+                                    automation:AutomationProperties.Name="{Binding LabelHomepage}"
                                     Padding="8,3" Margin="8,0,0,0"/>
                         </Grid>
 
@@ -148,6 +153,7 @@
                                     IsVisible="{Binding HasLicenseUrl}"
                                     Command="{Binding OpenUrlCommand}"
                                     CommandParameter="{Binding LicenseText}"
+                                    automation:AutomationProperties.Name="{Binding LabelLicense}"
                                     Padding="8,3" Margin="8,0,0,0"/>
                         </Grid>
 
@@ -159,6 +165,7 @@
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                         <Button x:Name="MainActionButton"
                                 Content="{Binding MainActionLabel}"
+                                automation:AutomationProperties.Name="{Binding MainActionLabel}"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
                                 Classes="accent"
@@ -166,6 +173,8 @@
                         <Button x:Name="ActionVariantsButton"
                                 Grid.Column="1"
                                 Content="▾"
+                            automation:AutomationProperties.Name="{Binding MainActionLabel}"
+                            automation:AutomationProperties.HelpText="{Binding HeaderDetails}"
                                 Width="30"
                                 Height="30"
                                 FontSize="30"
@@ -210,11 +219,13 @@
                                            Opacity="0.65" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding ManifestText}"
+                                       automation:AutomationProperties.Name="{Binding LabelManifest}"
                                            TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Center"
                                            ToolTip.Tip="{Binding ManifestText}"/>
                                 <Button Grid.Column="2"
                                         Content="{Binding LabelOpen}"
+                                    automation:AutomationProperties.Name="{Binding LabelManifest}"
                                         IsVisible="{Binding HasManifestUrl}"
                                         Command="{Binding OpenUrlCommand}"
                                         CommandParameter="{Binding ManifestText}"
@@ -228,6 +239,8 @@
                                            Opacity="0.65" VerticalAlignment="Top"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding InstallerHash}"
+                                           automation:AutomationProperties.Name="{Binding InstallerHashLabel}"
+                                           automation:AutomationProperties.HelpText="{Binding InstallerHash}"
                                            TextWrapping="Wrap"
                                            FontSize="11"/>
                             </Grid>
@@ -249,11 +262,13 @@
                                            Opacity="0.65" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding InstallerUrlText}"
+                                       automation:AutomationProperties.Name="{Binding LabelInstallerUrl}"
                                            TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Center"
                                            ToolTip.Tip="{Binding InstallerUrlText}"/>
                                 <Button Grid.Column="2"
                                         Content="{Binding LabelOpen}"
+                                    automation:AutomationProperties.Name="{Binding LabelInstallerUrl}"
                                         IsVisible="{Binding HasInstallerUrl}"
                                         Command="{Binding OpenUrlCommand}"
                                         CommandParameter="{Binding InstallerUrlText}"
@@ -350,11 +365,13 @@
                                            Opacity="0.65" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
                                            Text="{Binding ReleaseNotesUrlText}"
+                                       automation:AutomationProperties.Name="{Binding LabelReleaseNotesUrl}"
                                            TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Center"
                                            ToolTip.Tip="{Binding ReleaseNotesUrlText}"/>
                                 <Button Grid.Column="2"
                                         Content="{Binding LabelOpen}"
+                                    automation:AutomationProperties.Name="{Binding LabelReleaseNotesUrl}"
                                         IsVisible="{Binding HasReleaseNotesUrl}"
                                         Command="{Binding OpenUrlCommand}"
                                         CommandParameter="{Binding ReleaseNotesUrlText}"
@@ -373,6 +390,7 @@
                 BorderThickness="0,1,0,0"
                 Padding="16,10">
             <Button Content="{Binding LabelClose}"
+                    automation:AutomationProperties.Name="{Binding LabelClose}"
                     Command="{Binding RequestCloseCommand}"
                     HorizontalAlignment="Right"
                     Padding="16,6"/>
